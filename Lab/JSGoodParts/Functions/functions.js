@@ -426,3 +426,416 @@ var factorial = function factorial(i, a) {
 	return factorial(i - 1, a * i);
 };
 document.writeln(factorial(4)); // 24
+
+//Scope
+
+//Scope in a programming language controls the visibility and lifetimes of variables and
+//parameters. This is an important service to the programmer because it reduces naming
+//collisions and provides automatic memory management:
+
+var foo = function () {
+	var a = 3, b = 5;
+	console.log(a, b, 'a');
+	var bar = function () {
+		var b = 7, c = 11;
+		console.log(a, b, c, 'b');
+		// At this point, a is 3, b is 7, and c is 11
+		a += b + c;
+		console.log(a, b, c, 'c');
+		// At this point, a is 21, b is 7, and c is 11
+	};
+	console.log(a, b, 'd');
+	// At this point, a is 3, b is 5, and c is not defined
+	bar();
+	console.log(a, b, 'e');
+	// At this point, a is 21, b is 5
+};
+
+//Most languages with C syntax have block scope. All variables defined in a block (a
+//list of statements wrapped with curly braces) are not visible from outside of the
+//block. The variables defined in a block can be released when execution of the block
+//is finished. This is a good thing.
+//
+//Unfortunately, JavaScript does not have block scope even though its block syntax
+//suggests that it does. This confusion can be a source of errors.
+//
+//JavaScript does have function scope. That means that the parameters and variables
+//defined in a function are not visible outside of the function, and that a variable
+//defined anywhere within a function is visible everywhere within the function.
+//
+//In many modern languages, it is recommended that variables be declared as late as
+//possible, at the first point of use. That turns out to be bad advice for JavaScript
+//because it lacks block scope. So instead, it is best to declare all of the variables used
+//in a function at the top of the function body.
+
+//Closure
+//
+//The good news about scope is that inner functions get access to the parameters and
+//variables of the functions they are defined within (with the exception of this and
+//arguments). This is a very good thing.
+//
+//Our getElementsByAttribute function worked because it declared a results variable,
+//and the inner function that it passed to walk_the_DOM also had access to the results
+//variable.
+//
+//A more interesting case is when the inner function has a longer lifetime than its outer
+//function.
+//
+//Earlier, we made a myObject that had a value and an increment method. Suppose we
+//wanted to protect the value from unauthorized changes.
+//
+//Instead of initializing myObject with an object literal, we will initialize myObject by
+//calling a function that returns an object literal. That function defines a value variable.
+//That variable is always available to the increment and getValue methods, but
+//the function’s scope keeps it hidden from the rest of the program:
+
+var myObject = function () {
+	var value = 0;
+	return {
+		increment: function (inc) {
+			value += typeof inc === 'number' ? inc : 1;
+		},
+		getValue: function () {
+			return value;
+		}
+	};
+} ();
+
+//We are not assigning a function to myObject. We are assigning the result of invoking
+//that function. Notice the ( ) on the last line. The function returns an object containing
+//two methods, and those methods continue to enjoy the privilege of access to the
+//value variable.
+//
+//The Quo constructor from earlier in this chapter produced an object with a status
+//property and a get_status method. But that doesn’t seem very interesting. Why
+//would you call a getter method on a property you could access directly? It would be
+//more useful if the status property were private. So, let’s define a different kind of quo
+//function to do that:
+
+// Create a maker function called quo. It makes an
+// object with a get_status method and a private
+// status property.
+
+var quo = function (status) {
+	return {
+		get_status: function () {
+			return status;
+		}
+	};
+};
+// Make an instance of quo.
+var myQuo = quo("amazed");
+document.writeln(myQuo.get_status());
+
+//This quo function is designed to be used without the new prefix, so the name is not
+//capitalized. When we call quo, it returns a new object containing a get_status
+//method. A reference to that object is stored in myQuo. The get_status method still
+//has privileged access to quo’s status property even though quo has already returned.
+//get_status does not have access to a copy of the parameter; it has access to the
+//parameter itself. This is possible because the function has access to the context in
+//which it was created. This is called closure.
+//Let’s look at a more useful example:
+
+// Define a function that sets a DOM node's color
+// to yellow and then fades it to white.
+var fade = function (node) {
+	var level = 1;
+	var step = function () {
+		var hex = level.toString(16);
+		node.style.backgroundColor = '#FFFF' + hex + hex;
+		if (level < 15) {
+			level += 1;
+			setTimeout(step, 100);
+		}
+	};
+	setTimeout(step, 100);
+};
+fade(document.body);
+
+//We call fade, passing it document.body (the node created by the HTML <body> tag).
+//fade sets level to 1. It defines a step function. It calls setTimeout, passing it the step
+//function and a time (100 milliseconds). It then returns—fade has finished.
+//
+//Suddenly, about a 10th of a second later, the step function gets invoked. It makes a
+//base 16 character from fade’s level. It then modifies the background color of fade’s
+//node. It then looks at fade’s level. If it hasn’t gotten to white yet, it then increments
+//fade’s level and uses setTimeout to schedule itself to run again.
+
+//Suddenly, the step function gets invoked again. But this time, fade’s level is 2. fade
+//returned a while ago, but its variables continue to live as long as they are needed by
+//one or more of fade’s inner functions.
+//
+//It is important to understand that the inner function has access to the actual variables
+//of the outer functions and not copies in order to avoid the following problem:
+
+// BAD EXAMPLE
+// Make a function that assigns event handler functions to an array of nodes the wrong way.
+// When you click on a node, an alert box is supposed to display the ordinal of the node.
+// But it always displays the number of nodes instead.
+
+var add_the_handlers = function (nodes) {
+	var i;
+	for (i = 0; i < nodes.length; i += 1) {
+		nodes[i].onclick = function (e) {
+			alert(i);
+		};
+	}
+};
+// END BAD EXAMPLE
+//The add_the_handlers function was intended to give each handler a unique number
+//(i). It fails because the handler functions are bound to the variable i, not the value of
+//the variable i at the time the function was made:
+
+// BETTER EXAMPLE
+// Make a function that assigns event handler functions to an array of nodes the right way.
+// When you click on a node, an alert box will display the ordinal of the node.
+
+var add_the_handlers = function (nodes) {
+	var i;
+	for (i = 0; i < nodes.length; i += 1) {
+		nodes[i].onclick = function (i) {
+			return function (e) {
+				alert(e);
+			};
+		} (i);
+	}
+};
+
+//Now, instead of assigning a function to onclick, we define a function and immediately
+//invoke it, passing in i. That function will return an event handler function that
+//is bound to the value of i that was passed in, not to the i defined in add_the_
+//handlers. That returned function is assigned to onclick.
+
+//Callbacks
+//
+//Functions can make it easier to deal with discontinuous events. For example, suppose
+//there is a sequence that begins with a user interaction, making a request of the
+//server, and finally displaying the server’s response. The naïve way to write that
+//would be:
+
+//request = prepare_the_request();
+//response = send_request_synchronously(request);
+//display(response);
+
+//The problem with this approach is that a synchronous request over the network will
+//leave the client in a frozen state. If either the network or the server is slow, the degradation
+//in responsiveness will be unacceptable.
+//
+//A better approach is to make an asynchronous request, providing a callback function
+//that will be invoked when the server’s response is received. An asynchronous
+//function returns immediately, so the client isn’t blocked:
+
+//request = prepare_the_request();
+//send_request_asynchronously(request, function (response) {
+//	display(response);
+//});
+
+//We pass a function parameter to the send_request_asynchronously function that will
+//be called when the response is available.
+
+//Module
+//
+//We can use functions and closure to make modules. A module is a function or object
+//that presents an interface but that hides its state and implementation. By using functions
+//to produce modules, we can almost completely eliminate our use of global variables,
+//thereby mitigating one of JavaScript’s worst features.
+//
+//For example, suppose we want to augment String with a deentityify method. Its
+//job is to look for HTML entities in a string and replace them with their equivalents.
+//It makes sense to keep the names of the entities and their equivalents in an object.
+//But where should we keep the object? We could put it in a global variable, but global
+//variables are evil. We could define it in the function itself, but that has a runtime
+//cost because the literal must be evaluated every time the function is invoked. The
+//ideal approach is to put it in a closure, and perhaps provide an extra method that can
+//add additional entities:
+
+String.method('deentityify', function () {
+	// The entity table. It maps entity names to
+	// characters.
+	var entity = {
+		quot: '"',
+		lt: '<',
+		gt: '>'
+	};
+	// Return the deentityify method.
+	return function () {
+		// This is the deentityify method. It calls the string
+		// replace method, looking for substrings that start
+		// with '&' and end with ';'. If the characters in
+		// between are in the entity table, then replace the
+		// entity with the character from the table. It uses
+		// a regular expression (Chapter 7).
+		return this.replace(/&([^&;]+);/g,
+			function (a, b) {
+				var r = entity[b];
+				return typeof r === 'string' ? r : a;
+			}
+			);
+	};
+} ());
+
+//Notice the last line. We immediately invoke the function we just made with the ( )
+//operator. That invocation creates and returns the function that becomes the
+//deentityify method.
+
+document.writeln('&lt;&quot;&gt;'.deentityify()); // <">
+
+//The module pattern takes advantage of function scope and closure to create relationships
+//that are binding and private. In this example, only the deentityify method has
+//access to the entity data structure.
+//
+//The general pattern of a module is a function that defines private variables and functions;
+//creates privileged functions which, through closure, will have access to the private
+//variables and functions; and that returns the privileged functions or stores them
+//in an accessible place.
+//
+//Use of the module pattern can eliminate the use of global variables. It promotes
+//information hiding and other good design practices. It is very effective in encapsulating
+//applications and other singletons.
+//It can also be used to produce objects that are secure. Let’s suppose we want to make
+//an object that produces a serial number:
+
+var serial_maker = function () {
+	// Produce an object that produces unique strings. A
+	// unique string is made up of two parts: a prefix
+	// and a sequence number. The object comes with
+	// methods for setting the prefix and sequence
+	// number, and a gensym method that produces unique
+	// strings.
+	var prefix = '';
+	var seq = 0;
+	return {
+		set_prefix: function (p) {
+			prefix = String(p);
+		},
+		set_seq: function (s) {
+			seq = s;
+		},
+		gensym: function () {
+			var result = prefix + seq;
+			seq += 1;
+			return result;
+		}
+	};
+};
+var seqer = serial_maker();
+seqer.set_prefix = ('Q');
+seqer.set_seq = (1000);
+var unique = seqer.gensym(); // unique is "Q1000"
+
+//The methods do not make use of this or that. As a result, there is no way to compromise
+//the seqer. It isn’t possible to get or change the prefix or seq except as permitted
+//by the methods. The seqer object is mutable, so the methods could be
+//replaced, but that still does not give access to its secrets. seqer is simply a collection
+//of functions, and those functions are capabilities that grant specific powers to use or
+//modify the secret state.
+//
+//If we passed seqer.gensym to a third party’s function, that function would be able to
+//generate unique strings, but would be unable to change the prefix or seq.
+
+//Cascade
+//
+//Some methods do not have a return value. For example, it is typical for methods that
+//set or change the state of an object to return nothing. If we have those methods
+//return this instead of undefined, we can enable cascades. In a cascade, we can call
+//many methods on the same object in sequence in a single statement. An Ajax library
+//that enables cascades would allow us to write in a style like this:
+
+/*getElement('myBoxDiv').
+	move(350, 150).
+	width(100).
+	height(100).
+	color('red').
+	border('10px outset').
+	padding('4px').
+	appendText("Please stand by").
+	on('mousedown', function (m) {
+	this.startDrag(m, this.getNinth(m));
+}).
+	on('mousemove', 'drag').
+	on('mouseup', 'stopDrag').
+	later(2000, function () {
+	this.
+		color('yellow').
+		setHTML("What hath God wraught?").
+		slide(400, 40, 200, 200);
+}).
+	tip('This box is resizeable');*/
+ 
+//In this example, the getElement function produces an object that gives functionality
+//to the DOM element with id="myBoxDiv". The methods allow us to move the element,
+//change its dimensions and styling, and add behavior. Each of those methods
+//returns the object, so the result of the invocation can be used for the next invocation.
+//Cascading can produce interfaces that are very expressive. It can help control the tendency
+//to make interfaces that try to do too much at once.
+
+//Curry
+//
+//Functions are values, and we can manipulate function values in interesting ways.
+//Currying allows us to produce a new function by combining a function and an
+//argument:
+
+/*var add1 = add.curry(1);
+document.writeln(add1(6)); // 7*/
+
+//add1 is a function that was created by passing 1 to add’s curry method. The add1
+//function adds 1 to its argument. JavaScript does not have a curry method, but we
+//can fix that by augmenting Function.prototype:
+
+Function.method('curry', function () {
+	var args = arguments, that = this;
+	return function () {
+		return that.apply(null, args.concat(arguments));
+	};
+}); // Something isn't right...
+
+//The curry method works by creating a closure that holds that original function and
+//the arguments to curry. It returns a function that, when invoked, returns the result of
+//calling that original function, passing it all of the arguments from the invocation of
+//curry and the current invocation. It uses the Array concat method to concatenate the
+//two arrays of arguments together.
+//
+//Unfortunately, as we saw earlier, the arguments array is not an array, so it does not
+//have the concat method. To work around that, we will apply the array slice method
+//on both of the arguments arrays. This produces arrays that behave correctly with the
+//concat method:
+
+Function.method('curry', function () {
+	var slice = Array.prototype.slice,
+		args = slice.apply(arguments),
+		that = this;
+	return function () {
+		return that.apply(null, args.concat(slice.apply(arguments)));
+	};
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
