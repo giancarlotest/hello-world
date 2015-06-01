@@ -127,11 +127,20 @@ flight.hasOwnProperty('number') // true
 flight.hasOwnProperty('constructor') // false
 
 //Enumeration
+<<<<<<< HEAD
 //The for in statement can loop over all of the property names in an object. The enumeration
 //will include all of the properties—including functions and prototype properties
 //that you might not be interested in—so it is necessary to filter out the values
 //youdon’t want. The most common filters are the hasOwnProperty method and using
 //typeof to exclude functions:
+=======
+//The for in statement can loop over all of the property names in an object. The enu-
+//meration will include all of the properties—including functions and prototype prop-
+//erties that you might not be interested in—so it is necessary to filter out the values
+//you don’t want. The most common filters are the hasOwnProperty method and using
+//typeof to exclude functions:
+
+>>>>>>> b9a6e52a42e14ff4ed497216d3cf11f3cd1e37e4
 var name;
 for (name in another_stooge) {
 	if (typeof another_stooge[name] !== 'function') {
@@ -141,8 +150,13 @@ for (name in another_stooge) {
 
 //There is no guarantee on the order of the names, so be prepared for the names to
 //appear in any order. If you want to assure that the properties appear in a particular
+<<<<<<< HEAD
 //order, it is best to avoid the for in statement entirely and instead make an array containing
 //the names of the properties in the correct order:
+=======
+//order, it is best to avoid the for in statement entirely and instead make an array con-
+//taining the names of the properties in the correct order:
+>>>>>>> b9a6e52a42e14ff4ed497216d3cf11f3cd1e37e4
 var i;
 var properties = [
 	'first-name',
@@ -154,19 +168,66 @@ for (i = 0; i < properties.length; i += 1) {
 	document.writeln(properties[i] + ': ' +
 		another_stooge[properties[i]]);
 }
+<<<<<<< HEAD
 //By using for instead of for in, we were able to get the properties we wanted without
+=======
+//By using for instead of for in , we were able to get the properties we wanted without
+>>>>>>> b9a6e52a42e14ff4ed497216d3cf11f3cd1e37e4
 //worrying about what might be dredged up from the prototype chain, and we got
 //them in the correct order.
 
 //Delete
 //The delete operator can be used to remove a property from an object. It will remove
+<<<<<<< HEAD
 //a property from the object if it has one. It will not touch any of the objects in the prototype
 //linkage.
 //Removing a property from an object may allow a property from the prototype linkage
 //to shine through:
+=======
+//a property from the object if it has one. It will not touch any of the objects in the proto-
+//type linkage.
+//Removing a property from an object may allow a property from the prototype link-
+//age to shine through:
+>>>>>>> b9a6e52a42e14ff4ed497216d3cf11f3cd1e37e4
 another_stooge.nickname // 'Moe'
 
 // Remove nickname from another_stooge, revealing
 // the nickname of the prototype.
 delete another_stooge.nickname;
 another_stooge.nickname // 'Curly'
+<<<<<<< HEAD
+=======
+
+//Global Abatement
+//JavaScript makes it easy to define global variables that can hold all of the assets of
+//your application. Unfortunately, global variables weaken the resiliency of programs
+//and should be avoided.
+//One way to minimize the use of global variables is to create a single global variable
+//for your application:
+var MYAPP = {};
+
+//That variable then becomes the container for your application:
+MYAPP.stooge = {
+	"first-name": "Joe",
+	"last-name": "Howard"
+};
+MYAPP.flight = {
+	airline: "Oceanic",
+	number: 815,
+	departure: {
+		IATA: "SYD",
+		time: "2004-09-22 14:55",
+		city: "Sydney"
+	},
+	arrival: {
+		IATA: "LAX",
+		time: "2004-09-23 10:42",
+		city: "Los Angeles"
+	}
+};
+//By reducing your global footprint to a single name, you significantly reduce the
+//chance of bad interactions with other applications, widgets, or libraries. Your pro-
+//gram also becomes easier to read because it is obvious that MYAPP.stooge refers to a
+//top-level structure. In the next chapter, we will see ways to use closure for informa-
+//tion hiding, which is another effective global abatement technique.
+>>>>>>> b9a6e52a42e14ff4ed497216d3cf11f3cd1e37e4
