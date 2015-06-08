@@ -1,3 +1,10 @@
+(function () {
+	var writer = document.writeln;
+	document.writeln = function () {
+		writer.apply(this, Array.prototype.slice.call(arguments).concat(['</br>']));
+	};
+} ());
+
 //Functions 
 //
 //The best thing about JavaScript is its implementation of functions. It got almost every-
@@ -320,6 +327,7 @@ document.writeln('"' + " neat ".trim() + '"');
 Function.prototype.method = function (name, func) {
 	if (!this.prototype[name]) {
 		this.prototype[name] = func;
+		return this;
 	}
 };
 
@@ -808,6 +816,391 @@ Function.method('curry', function () {
 		return that.apply(null, args.concat(slice.apply(arguments)));
 	};
 });
+
+//Memoization
+//
+//Functions can use objects to remember the results of previous operations, making it
+//possible to avoid unnecessary work. This optimization is called memoization.
+//JavaScript’s objects and arrays are very convenient for this.
+//
+//Let’s say we want a recursive function to compute Fibonacci numbers. A Fibonacci
+//number is the sum of the two previous Fibonacci numbers. The first two are 0 and 1:
+
+var fibonacci = function (n) {
+	return n < 2 ? n : fibonacci(n - 1) + fibonacci(n - 2);
+};
+for (var i = 0; i <= 10; i += 1) {
+	document.writeln('// ' + i + ': ' + fibonacci(i));
+}
+// 0: 0
+// 1: 1
+// 2: 1
+// 3: 2
+// 4: 3
+// 5: 5
+// 6: 8
+// 7: 13
+// 8: 21
+// 9: 34
+// 10: 55
+
+//This works, but it is doing a lot of unnecessary work. The fibonacci function is
+//called 453 times. We call it 11 times, and it calls itself 442 times in computing values
+//that were probably already recently computed. If we memoize the function, we can
+//significantly reduce its workload.
+//
+//We will keep our memoized results in a memo array that we can hide in a closure.
+//When our function is called, it first looks to see if it already knows the result. If it
+//does, it can immediately return it:
+
+var fibonacci = function () {
+	var memo = [0, 1];
+	var fib = function (n) {
+		var result = memo[n];
+		if (typeof result !== 'number') {
+			result = fib(n - 1) + fib(n - 2);
+			memo[n] = result;
+		}
+		return result;
+	};
+	return fib;
+} ();
+
+//This function returns the same results, but it is called only 29 times. We called it 11
+//times. It called itself 18 times to obtain the previously memoized results.
+//We can generalize this by making a function that helps us make memoized functions.
+//The memoizer function will take an initial memo array and the fundamental function.
+//It returns a shell function that manages the memo store and that calls the
+//fundamental function as needed. We pass the shell function and the function’s
+//parameters to the fundamental function:
+
+var memoizer = function (memo, fundamental) {
+	var shell = function (n) {
+		var result = memo[n];
+		if (typeof result !== 'number') {
+			result = fundamental(shell, n);
+			memo[n] = result;
+		}
+		return result;
+	};
+	return shell;
+};
+
+//We can now define fibonacci with the memoizer, providing the initial memo array and
+//fundamental function:
+
+var fibonacci = memoizer([0, 1], function (shell, n) {
+	return shell(n - 1) + shell(n - 2);
+});
+
+//By devising functions that produce other functions, we can significantly reduce the
+//amount of work we have to do. For example, to produce a memoizing factorial function,
+//we only need to supply the basic factorial formula:
+
+var factorial = memoizer([1, 1], function (shell, n) {
+	return n * shell(n - 1);
+});
+
+//Inheritance 
+//
+//Inheritance is an important topic in most programming languages.
+//
+//In the classical languages (such as Java), inheritance (or extends) provides two useful
+//services. First, it is a form of code reuse. If a new class is mostly similar to an existing
+//class, youonly have to specify the differences. Patterns of code reuse are extremely
+//important because they have the potential to significantly reduce the cost of software
+//development. The other benefit of classical inheritance is that it includes the
+//specification of a system of types. This mostly frees the programmer from having to
+//write explicit casting operations, which is a very good thing because when casting,
+//the safety benefits of a type system are lost.
+//
+//JavaScript, being a loosely typed language, never casts. The lineage of an object is
+//irrelevant. What matters about an object is what it can do, not what it is descended
+//from.
+//
+//JavaScript provides a much richer set of code reuse patterns. It can ape the classical
+//pattern, but it also supports other patterns that are more expressive. The set of possible
+//inheritance patterns in JavaScript is vast. In this chapter, we’ll look at a few of the
+//most straightforward patterns. Much more complicated constructions are possible,
+//but it is usually best to keep it simple.
+//
+//In classical languages, objects are instances of classes, and a class can inherit from
+//another class. JavaScript is a prototypal language, which means that objects inherit
+//directly from other objects.
+
+//Pseudoclassical
+//
+//JavaScript is conflicted about its prototypal nature. Its prototype mechanism is
+//obscured by some complicated syntactic business that looks vaguely classical.
+//Instead of having objects inherit directly from other objects, an unnecessary level of
+//indirection is inserted such that objects are produced by constructor functions.
+//
+//When a function object is created, the Function constructor that produces the function
+//object runs some code like this:
+
+this.prototype = { constructor: this };
+
+//The new function object is given a prototype property whose value is an object containing
+//a constructor property whose value is the new function object. The
+//prototype object is the place where inherited traits are to be deposited. Every function
+//gets a prototype object because the language does not provide a way of determining
+//which functions are intended to be used as constructors. The constructor
+//property is not useful. It is the prototype object that is important.
+//
+//When a function is invoked with the constructor invocation pattern using the new
+//prefix, this modifies the way in which the function is executed. If the new operator
+//were a method instead of an operator, it could have been implemented like this:
+
+Function.method('new', function () {
+	// Create a new object that inherits from the
+	// constructor's prototype.
+	var that = Object.create(this.prototype);
+	// Invoke the constructor, binding –this- to
+	// the new object.
+	var other = this.apply(that, arguments);
+	// If its return value isn't an object,
+	// substitute the new object.
+	return (typeof other === 'object' && other) || that;
+});
+
+//We can define a constructor and augment its prototype:
+
+var Mammal = function (name) {
+	this.name = name;
+};
+Mammal.prototype.get_name = function () {
+	return this.name;
+};
+Mammal.prototype.says = function () {
+	return this.saying || '';
+};
+
+//Now, we can make an instance:
+
+var myMammal = new Mammal('Herb the Mammal');
+var name = myMammal.get_name(); // 'Herb the Mammal'
+
+//We can make another pseudoclass that inherits from Mammal by defining its
+//constructor function and replacing its prototype with an instance of Mammal:
+
+var Cat = function (name) {
+	this.name = name;
+	this.saying = 'meow';
+};
+// Replace Cat.prototype with a new instance of Mammal
+Cat.prototype = new Mammal();
+// Augment the new prototype with
+// purr and get_name methods.
+Cat.prototype.purr = function (n) {
+	var i, s = '';
+	for (i = 0; i < n; i += 1) {
+		if (s) {
+			s += '-';
+		}
+		s += 'r';
+	}
+	return s;
+};
+Cat.prototype.get_name = function () {
+	return this.says() + ' ' + this.name +
+		' ' + this.says();
+};
+var myCat = new Cat('Henrietta');
+var says = myCat.says(); // 'meow'
+var purr = myCat.purr(5); // 'r-r-r-r-r'
+var name = myCat.get_name();
+// 'meow Henrietta meow'
+
+//The pseudoclassical pattern was intended to look sort of object-oriented, but it is
+//looking quite alien. We can hide some of the ugliness by using the method method
+//and defining an inherits method:
+
+Function.method('inherits', function (Parent) {
+	this.prototype = new Parent();
+	return this;
+});
+
+
+//Our inherits and method methods return this, allowing us to program in a cascade
+//style. We can now make our Cat with one statement.
+
+var Cat = function (name) {
+	this.name = name;
+	this.saying = 'meow';
+}.inherits(Mammal).method('purr', function (n) {
+	var i, s = '';
+	for (i = 0; i < n; i += 1) {
+		if (s) {
+			s += '-';
+		}
+		s += 'r';
+	}
+	return s;
+}).method('get_name', function () {
+	return this.says() + ' ' + this.name +
+		' ' + this.says();
+});
+ 
+//By hiding the prototype jazz, it now looks a bit less alien. But have we really
+//improved anything? We now have constructor functions that act like classes, but at
+//the edges, there may be surprising behavior. There is no privacy; all properties are
+//public. There is no access to super methods.
+//
+//Even worse, there is a serious hazard with the use of constructor functions. If you
+//forget to include the new prefix when calling a constructor function, then this will
+//not be bound to a new object. Sadly, this will be bound to the global object, so
+//instead of augmenting your new object, you will be clobbering global variables. That
+//is really bad. There is no compile warning, and there is no runtime warning.
+//
+//This is a serious design error in the language. To mitigate this problem, there is a
+//convention that all constructor functions are named with an initial capital, and that
+//nothing else is spelled with an initial capital. This gives us a prayer that visual inspection
+//can find a missing new. A much better alternative is to not use new at all.
+//
+//The pseudoclassical form can provide comfort to programmers who are unfamiliar
+//with JavaScript, but it also hides the true nature of the language. The classically
+//inspired notation can induce programmers to compose hierarchies that are unnecessarily
+//deep and complicated. Much of the complexity of class hierarchies is motivated
+//by the constraints of static type checking. JavaScript is completely free of those
+//constraints. In classical languages, class inheritance is the only form of code reuse.
+//JavaScript has more and better options.
+
+
+//Object Specifiers
+//
+//It sometimes happens that a constructor is given a very large number of parameters.
+//This can be troublesome because it can be very difficult to remember the order of the
+//arguments. In such cases, it can be much friendlier if we write the constructor to
+//accept a single object specifier instead. That object contains the specification of the
+//object to be constructed. So, instead of:
+
+/*var myObject = maker(f, l, m, c, s);
+
+//we can write:
+
+var myObject = maker({
+	first: f,
+	last: l,
+	state: s,
+	city: c
+});*/
+
+//The arguments can now be listed in any order, arguments can be left out if the constructor
+//is smart about defaults, and the code is much easier to read.
+//
+//This can have a secondary benefit when working with JSON (see Appendix E). JSON
+//text can only describe data, but sometimes the data represents an object, and it
+//would be useful to associate the data with its methods. This can be done trivially if
+//the constructor takes an object specifier because we can simply pass the JSON object
+//to the constructor and it will return a fully constituted object.
+
+
+//Prototypal
+//
+//In a purely prototypal pattern, we dispense with classes. We focus instead on the
+//objects. Prototypal inheritance is conceptually simpler than classical inheritance: a
+//new object can inherit the properties of an old object. This is perhaps unfamiliar, but
+//it is really easy to understand. You start by making a useful object. You can then
+//make many more objects that are like that one. The classification process of breaking
+//an application down into a set of nested abstract classes can be completely
+//avoided.
+//
+//Let’s start by using an object literal to make a useful object:
+
+var myMammal = {
+	name: 'Herb the Mammal',
+	get_name: function () {
+		return this.name;
+	},
+	says: function () {
+		return this.saying || '';
+	}
+};
+
+//Once we have an object that we like, we can make more instances with the Object.
+//create method from Chapter 3. We can then customize the new instances:
+
+var myCat = Object.create(myMammal);
+myCat.name = 'Henrietta';
+myCat.saying = 'meow';
+myCat.purr = function (n) {
+	var i, s = '';
+	for (i = 0; i < n; i += 1) {
+		if (s) {
+			s += '-';
+		}
+		s += 'r';
+	}
+	return s;
+};
+myCat.get_name = function () {
+	return this.says() + ' ' + this.name + ' ' + this.says();
+};
+
+//This is differential inheritance. By customizing a new object, we specify the differences
+//from the object on which it is based.
+//Sometimes is it useful for data structures to inherit from other data structures. Here
+//is an example: Suppose we are parsing a language such as JavaScript or TEX in which
+//a pair of curly braces indicates a scope. Items defined in a scope are not visible outside
+//of the scope. In a sense, an inner scope inherits from its outer scope. JavaScript
+//objects are very good at representing this relationship. The block function is called
+//when a left curly brace is encountered. The parse function will look up symbols from
+//scope, and augment scope when it defines new symbols:
+
+var block = function () {
+	
+	// Remember the current scope. Make a new scope that
+	// includes everything from the current one.
+	var oldScope = scope;
+	scope = Object.create(scope);
+ 
+	// Advance past the left curly brace.
+	advance('{');
+ 
+	// Parse using the new scope.
+	parse(scope);
+ 
+	// Advance past the right curly brace and discard the
+	// new scope, restoring the old one.
+	advance('}');
+	scope = oldScope;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
